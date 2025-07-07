@@ -34,7 +34,8 @@ app.get("/api/transactions/:id", async (req, res) => {
 
 app.post("/api/transactions", async (req, res) => {
   try {
-    const { title, amount, is_income, transaction_date, user_id } = req.body;
+    const { title, amount, is_income, transaction_date, user_id, category } =
+      req.body;
     const newTransaction = await knex("transactions")
       .insert({
         title,
@@ -48,6 +49,41 @@ app.post("/api/transactions", async (req, res) => {
     res.status(201).json(newTransaction[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.put("/api/transactions/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, amount, category, is_income } = req.body;
+
+    if (
+      !title ||
+      !category ||
+      amount === undefined ||
+      is_income === undefined
+    ) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const updatedTransaction = await knex("transactions")
+      .where({ id })
+      .update({
+        title,
+        amount,
+        category,
+        is_income,
+      })
+      .returning("*");
+
+    if (!updatedTransaction.length) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
+    res.json(updatedTransaction[0]);
+  } catch (err) {
+    console.error("Update error:", err);
+    res.status(500).json({ error: "DATABASE ERROR", details: err.message });
   }
 });
 

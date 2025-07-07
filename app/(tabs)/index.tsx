@@ -39,7 +39,7 @@ export default function Index() {
           {loading ? "..." : "Monthly Income: " + Math.floor(income)}
         </Text>
         <Text style={styles.expenses}>
-          {loading ? "..." : "Monthly Expenses: " + Math.floor(expenses)}
+          {loading ? "..." : "Monthly Expenses: " + (Math.floor(expenses) + 1)}
         </Text>
         <Link href="/transactions" asChild>
           <TouchableOpacity style={styles.button}>

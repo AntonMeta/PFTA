@@ -16,7 +16,7 @@ exports.up = function (knex) {
       table.integer("user_id").references("id").inTable("users");
       table.decimal("amount", 12, 2).notNullable();
       table.string("category").notNullable();
-      table.text("description");
+      table.text("title");
       table.date("transaction_date").defaultTo(knex.fn.now());
       table.timestamps(true, true);
     });

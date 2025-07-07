@@ -19,12 +19,16 @@ export default function TransactionDetail() {
   const [transaction, setTransaction] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [editTitle, setEditTitle] = useState(transaction?.title || "");
-  const [editAmount, setEditAmount] = useState(
-    transaction?.amount?.toString() || ""
-  );
-  const [editCategory, setEditCategory] = useState(transaction?.category || "");
+  const [editTitle, setEditTitle] = useState("");
+  const [editAmount, setEditAmount] = useState("");
+  const [editCategory, setEditCategory] = useState("");
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+
+  const parseAmountInput = (input: string): number => {
+    const normalized = input.replace(/,/g, ".");
+    return parseFloat(normalized);
+  };
+
   const categories = [
     "Food",
     "Transport",
@@ -33,12 +37,18 @@ export default function TransactionDetail() {
     "Healthcare",
     "Insurance",
     "Taxes",
-    "Savings",
     "Investments",
+    "Income",
     "Other",
   ];
 
   useEffect(() => {
+    if (transaction) {
+      setEditTitle(transaction.title);
+      setEditAmount(Math.abs(transaction.amount).toString());
+      setEditCategory(transaction.category || "");
+    }
+
     fetch(`http://192.168.33.6:3000/api/transactions/${transactionId}`)
       .then((res) => res.json())
       .then((data) => {
@@ -81,7 +91,20 @@ export default function TransactionDetail() {
   };
 
   const handleEdit = async () => {
+    if (!editTitle.trim() || !editAmount.trim()) {
+      Alert.alert("Error", "Please fill all fields");
+      return;
+    }
+
     try {
+      const parsedAmount = parseAmountInput(editAmount);
+      if (isNaN(parsedAmount)) {
+        Alert.alert("Error", "Please enter a valid amount");
+        return;
+      }
+
+      const isIncome = editCategory === "Income";
+
       const response = await fetch(
         `http://192.168.33.6:3000/api/transactions/${transactionId}`,
         {
@@ -91,13 +114,25 @@ export default function TransactionDetail() {
           },
           body: JSON.stringify({
             title: editTitle,
-            amount: parseFloat(editAmount),
+            amount: Number(parsedAmount),
             category: editCategory,
+            is_income: isIncome,
           }),
         }
       );
+      if (!response.ok) throw new Error("Update failed");
+
       const updatedTransaction = await response.json();
       setTransaction(updatedTransaction);
+      if (router.canGoBack()) {
+        router.back();
+        router.replace({
+          pathname: "/transactions",
+          params: { refresh: Date.now() }, // Force refresh
+        });
+      } else {
+        router.replace(`/transactions?refresh= ${Date.now()}`);
+      }
       setEditModalVisible(false);
     } catch (err) {
       Alert.alert("Error", "Failed to update transaction.");
@@ -244,7 +279,7 @@ export default function TransactionDetail() {
                   color="#b2bec3"
                 />
                 {categories.map((cat) => (
-                  <Picker.Item key={cat} label={cat} value={cat} />
+                  <Picker.Item key={cat} label={cat} value={cat} color="#fff" />
                 ))}
               </Picker>
               <Button

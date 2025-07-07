@@ -18,7 +18,7 @@ exports.seed = async function (knex) {
       user_id: insertedUsers[0].id,
       amount: 15.99,
       category: "Food",
-      description: "Lunch",
+      title: "Lunch",
       transaction_date: new Date("2023-10-01"),
     },
     {
@@ -26,7 +26,7 @@ exports.seed = async function (knex) {
       is_income: true,
       amount: 2000.0,
       category: "Income",
-      description: "Salary",
+      title: "Salary",
     },
   ]);
 };

@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 const sortData = [
   { label: "Newest", value: "1" },
@@ -56,8 +56,43 @@ export default function TransactionsScreen() {
   const [transactionAmount, setTransactionAmount] = useState("");
   const [transactionCategory, setTransactionCategory] = useState("");
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
-
+  const [refreshKey, setRefreshKey] = useState(0);
   const router = useRouter();
+  const { refresh } = useLocalSearchParams();
+
+  const parseAmountInput = (input: string): number => {
+    const normalized = input.replace(/,/g, ".");
+    return parseFloat(normalized);
+  };
+
+  const refreshTransactions = async () => {
+    try {
+      const response = await fetch("http://192.168.33.6:3000/api/transactions");
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setTransactions(
+          data.map(
+            (t: any) =>
+              new Transaction(
+                t.id,
+                t.title,
+                t.category,
+                Number(t.amount),
+                new Date(t.transaction_date).getTime(),
+                !!t.is_income
+              )
+          )
+        );
+      }
+      setRefreshKey((prev) => prev + 1); // Force refresh
+    } catch (err) {
+      console.error("Refresh error:", err);
+    }
+  };
+
+  useEffect(() => {
+    refreshTransactions();
+  }, [refresh]);
 
   useEffect(() => {
     fetch("http://192.168.33.6:3000/api/transactions")
@@ -92,8 +127,8 @@ export default function TransactionsScreen() {
     "Healthcare",
     "Insurance",
     "Taxes",
-    "Savings",
     "Investments",
+    "Income",
     "Other",
   ];
 
@@ -169,6 +204,9 @@ export default function TransactionsScreen() {
                     transactionAmount.trim() !== ""
                   ) {
                     try {
+                      const parsedAmount = parseAmountInput(transactionAmount);
+                      const isIncome = transactionCategory === "Income";
+
                       const response = await fetch(
                         "http://192.168.33.6:3000/api/transactions",
                         {
@@ -176,9 +214,9 @@ export default function TransactionsScreen() {
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
                             title: transactionTitle,
-                            amount: Number(transactionAmount),
+                            amount: Number(parsedAmount),
                             category: transactionCategory,
-                            is_income: false,
+                            is_income: isIncome,
                             transaction_date: new Date(),
                             user_id: 1,
                           }),
@@ -266,7 +304,7 @@ export default function TransactionsScreen() {
                 color="#b2bec3"
               />
               {categories.map((cat) => (
-                <Picker.Item key={cat} label={cat} value={cat} />
+                <Picker.Item key={cat} label={cat} value={cat} color="#fff" />
               ))}
             </Picker>
             <Button
@@ -289,9 +327,12 @@ export default function TransactionsScreen() {
           </View>
         </View>
         <FlatList
+          key={refreshKey}
           style={styles.list}
           data={transactions}
           keyExtractor={(_, index) => index.toString()}
+          refreshing={false}
+          onRefresh={refreshTransactions}
           renderItem={({ item }) => (
             <TouchableHighlight
               underlayColor="#2d3038"
@@ -311,7 +352,10 @@ export default function TransactionsScreen() {
                     { color: item.is_income ? "#00ff00" : "#e63946" },
                   ]}
                 >
-                  {item.amount} PLN
+                  {item.amount == Math.floor(item.amount)
+                    ? item.amount
+                    : Number(item.amount).toFixed(2)}{" "}
+                  PLN
                 </Text>
               </View>
             </TouchableHighlight>
